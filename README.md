@@ -1,4 +1,4 @@
-![](https://imgur.com/a/N54MpmR)
+![](https://i.imgur.com/GHOroLE.png)
 
 # Neurobridge
 

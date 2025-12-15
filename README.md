@@ -1,3 +1,5 @@
+![](https://imgur.com/a/N54MpmR) </br>
+
 # Neurobridge
 
 Neurobridge is a modern frontend web project built with React and Vite.  

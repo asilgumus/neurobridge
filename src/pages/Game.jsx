@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { levels, getCommandById, getLevelById, COMMANDS } from '../data/levels'
+import { levels, getCommandById, getLevelById } from '../data/levels'
 import useGameLogic from '../hooks/useGameLogic'
 import './Game.css'
 
@@ -17,7 +17,7 @@ function Game() {
         program,
         isRunning,
         isComplete,
-        currentStep,
+        currentStepId,
         addCommand,
         removeCommand,
         clearProgram,
@@ -30,6 +30,7 @@ function Game() {
     const [draggedCommand, setDraggedCommand] = useState(null)
     const [showLoopModal, setShowLoopModal] = useState(false)
     const [pendingLoopCommand, setPendingLoopCommand] = useState(null)
+    const [pendingTargetId, setPendingTargetId] = useState(null)
 
     // Reset when level changes
     useEffect(() => {
@@ -56,13 +57,87 @@ function Game() {
         e.dataTransfer.effectAllowed = 'copy'
     }
 
-    // Handle drop on program area
+    // Recursive Program Block Component
+    const ProgramBlock = ({ cmd, index, parentId = null }) => {
+        const isLoop = cmd.commandId === 'loop' || cmd.id === 'loop'
+
+        return (
+            <motion.div
+                layout
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className={`program-block ${currentStepId === cmd.id ? 'executing' : ''} ${isLoop ? 'loop-block' : ''}`}
+                style={{ backgroundColor: cmd.color }}
+            >
+                <div className="block-content">
+                    <span className="program-index">{index + 1}</span>
+                    <span className="program-icon">{cmd.icon}</span>
+                    {isLoop && cmd.repeatCount && (
+                        <span className="repeat-count">×{cmd.repeatCount}</span>
+                    )}
+                    <button
+                        className="program-remove"
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            removeCommand(cmd.id)
+                        }}
+                        disabled={isRunning}
+                    >
+                        ×
+                    </button>
+                </div>
+
+                {isLoop && (
+                    <div
+                        className="loop-children-zone"
+                        onDrop={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            if (draggedCommand && !isRunning) {
+                                // Check if it's a loop command being dropped nested
+                                if (draggedCommand.hasCount || draggedCommand.id === 'loop' || draggedCommand.commandId === 'loop') {
+                                    setPendingLoopCommand(draggedCommand)
+                                    setPendingTargetId(cmd.id) // Target is this loop
+                                    setShowLoopModal(true)
+                                } else {
+                                    addCommand(draggedCommand, cmd.id) // Add to this loop's ID
+                                }
+                            }
+                            setDraggedCommand(null)
+                        }}
+                        onDragOver={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                        }}
+                    >
+                        <AnimatePresence>
+                            {cmd.children?.map((child, i) => (
+                                <ProgramBlock
+                                    key={child.id}
+                                    cmd={child}
+                                    index={i}
+                                    parentId={cmd.id}
+                                />
+                            ))}
+                        </AnimatePresence>
+                        {(!cmd.children || cmd.children.length === 0) && (
+                            <div className="loop-placeholder">Komutları buraya sürükle</div>
+                        )}
+                    </div>
+                )}
+            </motion.div>
+        )
+    }
+
+    // Handle drop on root program area
     const handleDrop = (e) => {
         e.preventDefault()
         if (draggedCommand && !isRunning) {
-            // If it's a loop command with hasCount, show the modal
+            // Loop commands trigger modal first (if at root level or standard drag)
             if (draggedCommand.hasCount || draggedCommand.id === 'loop' || draggedCommand.commandId === 'loop') {
                 setPendingLoopCommand(draggedCommand)
+                setPendingTargetId(null) // Target is root
                 setShowLoopModal(true)
             } else {
                 addCommand(draggedCommand)
@@ -74,10 +149,11 @@ function Game() {
     // Handle loop count selection
     const handleLoopCountSelect = (count) => {
         if (pendingLoopCommand) {
-            addCommand({ ...pendingLoopCommand, repeatCount: count })
+            addCommand({ ...pendingLoopCommand, repeatCount: count }, pendingTargetId)
         }
         setShowLoopModal(false)
         setPendingLoopCommand(null)
+        setPendingTargetId(null)
     }
 
     // Handle drag over
@@ -237,28 +313,7 @@ function Game() {
                                 <div className="program-list">
                                     <AnimatePresence>
                                         {program.map((cmd, index) => (
-                                            <motion.div
-                                                key={cmd.id}
-                                                className={`program-block ${currentStep === index ? 'executing' : ''} ${cmd.commandId === 'loop' || cmd.id === 'loop' ? 'loop-block' : ''}`}
-                                                style={{ backgroundColor: cmd.color }}
-                                                initial={{ opacity: 0, scale: 0.8 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                exit={{ opacity: 0, scale: 0.8 }}
-                                                layout
-                                            >
-                                                <span className="program-index">{index + 1}</span>
-                                                <span className="program-icon">{cmd.icon}</span>
-                                                {(cmd.commandId === 'loop' || cmd.id === 'loop') && cmd.repeatCount && (
-                                                    <span className="repeat-count">×{cmd.repeatCount}</span>
-                                                )}
-                                                <button
-                                                    className="program-remove"
-                                                    onClick={() => removeCommand(index)}
-                                                    disabled={isRunning}
-                                                >
-                                                    ×
-                                                </button>
-                                            </motion.div>
+                                            <ProgramBlock key={cmd.id} cmd={cmd} index={index} />
                                         ))}
                                     </AnimatePresence>
                                 </div>
@@ -394,7 +449,7 @@ function Game() {
                                 <span className="loop-modal-icon">🔄</span>
                                 <h3>Kaç Kez Tekrar?</h3>
                             </div>
-                            <p className="loop-modal-hint">Son 2 komutu kaç kez tekrarlamak istiyorsun?</p>
+                            <p className="loop-modal-hint">Kaç kez tekrarlamak istiyorsun?</p>
                             <div className="loop-count-options">
                                 {[2, 3, 4, 5].map((count) => (
                                     <motion.button

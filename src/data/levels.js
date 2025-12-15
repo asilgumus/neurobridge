@@ -43,7 +43,7 @@ export const levels = [
         direction: 'UP',
         obstacles: [{ x: 4, y: 4 }, { x: 1, y: 1 }],
         commands: ['forward', 'turn_right', 'turn_left', 'back'],
-        optimalMoves: 6,
+        optimalMoves: 8,
         hint: 'Köşeleri dönerek hedefe ulaş.'
     },
     {
@@ -55,7 +55,7 @@ export const levels = [
         direction: 'UP',
         obstacles: [{ x: 2, y: 4 }, { x: 2, y: 3 }, { x: 2, y: 2 }],
         commands: ['forward', 'turn_right'],
-        optimalMoves: 6,
+        optimalMoves: 10,
         hint: 'Engelin etrafından dolaş.'
     },
     {
@@ -67,7 +67,7 @@ export const levels = [
         direction: 'UP',
         obstacles: [],
         commands: ['forward', 'turn_left', 'turn_right'],
-        optimalMoves: 8,
+        optimalMoves: 9,
         hint: 'Sağlı sollu ilerle.'
     },
     {
@@ -82,7 +82,7 @@ export const levels = [
             { x: 3, y: 5 }, { x: 3, y: 4 }, { x: 3, y: 3 }
         ],
         commands: ['forward', 'turn_right', 'turn_left'],
-        optimalMoves: 10,
+        optimalMoves: 13,
         hint: 'Labirentin içinden yolunu bul.'
     },
 
@@ -108,7 +108,7 @@ export const levels = [
         direction: 'UP',
         obstacles: [{ x: 2, y: 2 }],
         commands: ['forward', 'turn_right', 'loop'],
-        optimalMoves: 8,
+        optimalMoves: 7,
         hint: 'Kare çizerek hedefe yaklaş.'
     },
     {
@@ -120,7 +120,7 @@ export const levels = [
         direction: 'UP',
         obstacles: [],
         commands: ['forward', 'turn_right', 'turn_left', 'loop'],
-        optimalMoves: 4,
+        optimalMoves: 3,
         hint: 'İleri, sağa dön, ileri, sola dön... Bunu tekrarla.'
     },
     {
@@ -132,7 +132,7 @@ export const levels = [
         direction: 'UP',
         obstacles: [],
         commands: ['forward', 'turn_left', 'turn_right', 'loop'],
-        optimalMoves: 2,
+        optimalMoves: 1,
         hint: 'Döngü kullanarak düz git!'
     },
     {
@@ -144,7 +144,7 @@ export const levels = [
         direction: 'UP',
         obstacles: [],
         commands: ['forward', 'turn_left', 'loop'],
-        optimalMoves: 6,
+        optimalMoves: 3,
         hint: 'İçeriden dışarıya doğru açıl.'
     },
 
@@ -158,7 +158,7 @@ export const levels = [
         direction: 'UP',
         obstacles: [{ x: 2, y: 3 }, { x: 3, y: 2 }],
         commands: ['forward', 'turn_left', 'turn_right', 'jump'],
-        optimalMoves: 10,
+        optimalMoves: 11,
         hint: 'Engellerin üzerinden atla.'
     },
     {
@@ -170,7 +170,7 @@ export const levels = [
         direction: 'RIGHT',
         obstacles: [{ x: 3, y: 0 }, { x: 3, y: 1 }, { x: 3, y: 2 }, { x: 3, y: 3 }, { x: 3, y: 4 }, { x: 3, y: 5 }, { x: 3, y: 6 }],
         commands: ['forward', 'jump', 'loop'],
-        optimalMoves: 4,
+        optimalMoves: 3,
         hint: 'Duvarın üzerinden atla!'
     },
 
@@ -189,7 +189,7 @@ export const levels = [
             { x: 6, y: 5 }
         ],
         commands: ['forward', 'turn_left', 'turn_right', 'back', 'loop'],
-        optimalMoves: 12,
+        optimalMoves: 9,
         hint: 'Yolu takip et.'
     },
     {
@@ -203,7 +203,7 @@ export const levels = [
             { x: 4, y: 3 }, { x: 4, y: 5 }, { x: 3, y: 4 }, { x: 5, y: 4 }
         ],
         commands: ['forward', 'turn_left', 'turn_right', 'jump', 'back', 'loop'],
-        optimalMoves: 8,
+        optimalMoves: 4,
         hint: 'Önce kutudan çıkmalısın.'
     },
     {
@@ -219,7 +219,7 @@ export const levels = [
             { x: 7, y: 2 }, { x: 8, y: 2 }
         ],
         commands: ['forward', 'turn_left', 'turn_right', 'jump', 'back', 'wait', 'loop'],
-        optimalMoves: 20,
+        optimalMoves: 5,
         hint: 'Tüm yeteneklerini sergile!'
     }
 ]

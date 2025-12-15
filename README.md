@@ -1,16 +1,73 @@
-# React + Vite
+# Neurobridge
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Neurobridge is a modern frontend web project built with React and Vite.  
+It is designed as a clean, lightweight foundation for building scalable, maintainable, and fast web applications.
 
-Currently, two official plugins are available:
+The project focuses on simplicity and performance while keeping a clear structure that can be easily extended for larger use cases.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## React Compiler
+## Overview
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Neurobridge provides a ready-to-use development environment with modern frontend tooling.  
+It is suitable for learning, prototyping, and serving as a base for production-ready applications.
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Features
+
+- React-based component architecture  
+- Vite-powered fast development server with hot module replacement  
+- Optimized production builds  
+- Minimal and readable project structure  
+- Easy customization and extension  
+- Lightweight setup with no unnecessary dependencies  
+
+---
+
+## Tech Stack
+
+- React – User interface library  
+- Vite – Build tool and development server  
+- JavaScript (ES6+) – Application logic  
+- HTML5 – Markup  
+- CSS3 – Styling  
+
+---
+
+## Getting Started
+
+Follow the steps below to run the project locally.
+
+---
+
+## Prerequisites
+
+- Node.js (v16 or higher)  
+- npm or Yarn  
+
+---
+
+## Installation
+
+Clone the repository and install dependencies:
+
+git clone https://github.com/asilgumus/neurobridge.git
+cd neurobridge
+npm install
+
+## Development
+
+npm run dev
+
+## Build
+
+npm run build
+
+## Preview Production Build
+
+npm run preview
+
+## License
+
+This project is licensed under the MIT License.

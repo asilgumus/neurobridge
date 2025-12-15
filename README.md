@@ -1,5 +1,3 @@
-https://neurobridge-eta.vercel.app/
-
 ![](https://i.imgur.com/GHOroLE.png)
 
 # Neurobridge
@@ -8,6 +6,8 @@ Neurobridge is a modern frontend web project built with React and Vite.
 It is designed as a clean, lightweight foundation for building scalable, maintainable, and fast web applications.
 
 The project focuses on simplicity and performance while keeping a clear structure that can be easily extended for larger use cases.
+
+https://neurobridge-eta.vercel.app/
 
 ---
 

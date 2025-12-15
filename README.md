@@ -1,4 +1,4 @@
-![](https://imgur.com/a/N54MpmR) </br>
+![](https://imgur.com/a/N54MpmR)
 
 # Neurobridge
 

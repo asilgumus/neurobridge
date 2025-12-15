@@ -13,7 +13,7 @@ function Game() {
 
     const {
         position,
-        direction,
+        rotation,
         program,
         isRunning,
         isComplete,
@@ -101,12 +101,6 @@ function Game() {
         setShowSuccess(false)
     }
 
-    // Get direction rotation for robot
-    const getDirectionRotation = () => {
-        const rotations = { UP: 0, RIGHT: 90, DOWN: 180, LEFT: 270 }
-        return rotations[direction] || 0
-    }
-
     // Generate grid cells
     const renderGrid = () => {
         const cells = []
@@ -124,10 +118,12 @@ function Game() {
                     >
                         {isRobot && (
                             <motion.div
+                                layoutId="robot"
                                 className="robot"
                                 initial={false}
+                                style={{ transformOrigin: 'center center' }}
                                 animate={{
-                                    rotate: getDirectionRotation(),
+                                    rotate: rotation,
                                     scale: isRunning ? [1, 1.1, 1] : 1
                                 }}
                                 transition={{ type: 'spring', stiffness: 300, damping: 20 }}

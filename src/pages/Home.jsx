@@ -300,7 +300,8 @@ function Home() {
                             DEHB'li çocuklar için algoritma öğrenme platformu
                         </p>
                         <p className="footer-credit">
-                            Edu'dan Nisan ❤️ ile yapıldı
+                            4th Dimension - 6429
+                            adg
                         </p>
                     </div>
                 </div>

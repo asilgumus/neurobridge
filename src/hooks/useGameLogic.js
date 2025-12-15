@@ -3,7 +3,27 @@ import { DIRECTIONS } from '../data/levels'
 
 export function useGameLogic(level) {
     const [position, setPosition] = useState(level?.start || { x: 0, y: 0 })
-    const [direction, setDirection] = useState(level?.direction || 'UP')
+    // Store rotation in degrees (0 = UP, 90 = RIGHT, 180 = DOWN, 270 = LEFT)
+    // We start with the level direction converted to degrees
+    const [rotation, setRotation] = useState(() => {
+        const dir = level?.direction || 'UP'
+        const map = { UP: 0, RIGHT: 90, DOWN: 180, LEFT: 270 }
+        return map[dir] || 0
+    })
+
+    // Derived direction string for logic checks
+    const getDirectionFromRotation = (rot) => {
+        // Normalize rotation to 0-360 for logic
+        let normalized = rot % 360
+        if (normalized < 0) normalized += 360
+
+        if (normalized === 0) return 'UP'
+        if (normalized === 90) return 'RIGHT'
+        if (normalized === 180) return 'DOWN'
+        if (normalized === 270) return 'LEFT'
+        return 'UP' // Default
+    }
+
     const [program, setProgram] = useState([])
     const [isRunning, setIsRunning] = useState(false)
     const [isComplete, setIsComplete] = useState(false)
@@ -14,7 +34,8 @@ export function useGameLogic(level) {
     const resetGame = useCallback(() => {
         if (level) {
             setPosition(level.start)
-            setDirection(level.direction)
+            const map = { UP: 0, RIGHT: 90, DOWN: 180, LEFT: 270 }
+            setRotation(map[level.direction] || 0)
         }
         setProgram([])
         setIsRunning(false)
@@ -27,7 +48,8 @@ export function useGameLogic(level) {
     const resetPosition = useCallback(() => {
         if (level) {
             setPosition(level.start)
-            setDirection(level.direction)
+            const map = { UP: 0, RIGHT: 90, DOWN: 180, LEFT: 270 }
+            setRotation(map[level.direction] || 0)
         }
         setIsRunning(false)
         setIsComplete(false)
@@ -60,18 +82,6 @@ export function useGameLogic(level) {
         })
     }, [])
 
-    // Turn left
-    const turnLeft = useCallback((currentDir) => {
-        const turns = { UP: 'LEFT', LEFT: 'DOWN', DOWN: 'RIGHT', RIGHT: 'UP' }
-        return turns[currentDir]
-    }, [])
-
-    // Turn right
-    const turnRight = useCallback((currentDir) => {
-        const turns = { UP: 'RIGHT', RIGHT: 'DOWN', DOWN: 'LEFT', LEFT: 'UP' }
-        return turns[currentDir]
-    }, [])
-
     // Check if position is valid
     const isValidPosition = useCallback((x, y) => {
         if (!level) return false
@@ -100,8 +110,12 @@ export function useGameLogic(level) {
         resetPosition()
 
         let currentPos = { ...level.start }
-        let currentDir = level.direction
-        const history = [{ ...currentPos, direction: currentDir }]
+
+        // Initial rotation
+        const map = { UP: 0, RIGHT: 90, DOWN: 180, LEFT: 270 }
+        let currentRot = map[level.direction] || 0;
+
+        const history = [{ ...currentPos, rotation: currentRot }]
 
         // Expand loops with configurable repeat count
         const expandedProgram = []
@@ -131,6 +145,8 @@ export function useGameLogic(level) {
 
             await new Promise(resolve => setTimeout(resolve, 500))
 
+            const currentDir = getDirectionFromRotation(currentRot);
+
             switch (commandId) {
                 case 'forward': {
                     const dir = DIRECTIONS[currentDir]
@@ -140,7 +156,7 @@ export function useGameLogic(level) {
                     if (isValidPosition(newX, newY)) {
                         currentPos = { x: newX, y: newY }
                         setPosition({ ...currentPos })
-                        history.push({ ...currentPos, direction: currentDir })
+                        history.push({ ...currentPos, rotation: currentRot }) // Keep rotation
 
                         if (checkWin(newX, newY)) {
                             setIsComplete(true)
@@ -148,41 +164,21 @@ export function useGameLogic(level) {
                             setMoveHistory(history)
                             return true
                         }
+                    } else {
+                        // Hit wall, stop? For now just don't move
                     }
                     break
                 }
-                case 'left': {
-                    // Move directly left (x - 1)
-                    const newX = currentPos.x - 1
-                    const newY = currentPos.y
+                case 'back': {
+                    const dir = DIRECTIONS[currentDir]
+                    // Opposite direction
+                    const newX = currentPos.x - dir.dx
+                    const newY = currentPos.y - dir.dy
 
                     if (isValidPosition(newX, newY)) {
                         currentPos = { x: newX, y: newY }
-                        currentDir = 'LEFT'
                         setPosition({ ...currentPos })
-                        setDirection(currentDir)
-                        history.push({ ...currentPos, direction: currentDir })
-
-                        if (checkWin(newX, newY)) {
-                            setIsComplete(true)
-                            setIsRunning(false)
-                            setMoveHistory(history)
-                            return true
-                        }
-                    }
-                    break
-                }
-                case 'right': {
-                    // Move directly right (x + 1)
-                    const newX = currentPos.x + 1
-                    const newY = currentPos.y
-
-                    if (isValidPosition(newX, newY)) {
-                        currentPos = { x: newX, y: newY }
-                        currentDir = 'RIGHT'
-                        setPosition({ ...currentPos })
-                        setDirection(currentDir)
-                        history.push({ ...currentPos, direction: currentDir })
+                        history.push({ ...currentPos, rotation: currentRot })
 
                         if (checkWin(newX, newY)) {
                             setIsComplete(true)
@@ -194,22 +190,22 @@ export function useGameLogic(level) {
                     break
                 }
                 case 'turn_left': {
-                    // Rotate left 90 degrees (no movement)
-                    currentDir = turnLeft(currentDir)
-                    setDirection(currentDir)
-                    history.push({ ...currentPos, direction: currentDir, action: 'turn' })
+                    // Rotate left 90 degrees (subtract 90)
+                    currentRot -= 90
+                    setRotation(currentRot)
+                    history.push({ ...currentPos, rotation: currentRot, action: 'turn' })
                     break
                 }
                 case 'turn_right': {
-                    // Rotate right 90 degrees (no movement)
-                    currentDir = turnRight(currentDir)
-                    setDirection(currentDir)
-                    history.push({ ...currentPos, direction: currentDir, action: 'turn' })
+                    // Rotate right 90 degrees (add 90)
+                    currentRot += 90
+                    setRotation(currentRot)
+                    history.push({ ...currentPos, rotation: currentRot, action: 'turn' })
                     break
                 }
                 case 'wait': {
                     // Wait one turn (no action)
-                    history.push({ ...currentPos, direction: currentDir, action: 'wait' })
+                    history.push({ ...currentPos, rotation: currentRot, action: 'wait' })
                     break
                 }
                 case 'jump': {
@@ -224,7 +220,7 @@ export function useGameLogic(level) {
                         if (!landingObstacle) {
                             currentPos = { x: jumpX, y: jumpY }
                             setPosition({ ...currentPos })
-                            history.push({ ...currentPos, direction: currentDir, action: 'jump' })
+                            history.push({ ...currentPos, rotation: currentRot, action: 'jump' })
 
                             if (checkWin(jumpX, jumpY)) {
                                 setIsComplete(true)
@@ -253,7 +249,7 @@ export function useGameLogic(level) {
 
     return {
         position,
-        direction,
+        rotation, // Expose rotation instead of direction
         program,
         isRunning,
         isComplete,

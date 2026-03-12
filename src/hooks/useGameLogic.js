@@ -203,57 +203,88 @@ export function useGameLogic(level) {
             const currentDir = getDirectionFromRotation(currentRot);
 
             switch (commandId) {
-                case 'forward': {
-                    const dir = DIRECTIONS[currentDir]
-                    const newX = currentPos.x + dir.dx
-                    const newY = currentPos.y + dir.dy
+                case 'move_up': {
+                    currentRot = 0;
+                    setRotation(currentRot);
+                    const dir = DIRECTIONS.UP;
+                    const newX = currentPos.x + dir.dx;
+                    const newY = currentPos.y + dir.dy;
                     if (isValidPosition(newX, newY)) {
-                        currentPos = { x: newX, y: newY }
-                        setPosition({ ...currentPos })
-                        history.push({ ...currentPos, rotation: currentRot })
+                        currentPos = { x: newX, y: newY };
+                        setPosition({ ...currentPos });
+                        history.push({ ...currentPos, rotation: currentRot });
                         if (checkWin(newX, newY)) {
-                            setIsComplete(true)
-                            setIsRunning(false)
-                            setMoveHistory(history)
-                            return true
+                            setIsComplete(true);
+                            setIsRunning(false);
+                            setMoveHistory(history);
+                            return true;
                         }
                     }
-                    break
+                    break;
                 }
-                case 'back': {
-                    const dir = DIRECTIONS[currentDir]
-                    const newX = currentPos.x - dir.dx
-                    const newY = currentPos.y - dir.dy
+                case 'move_down': {
+                    currentRot = 180;
+                    setRotation(currentRot);
+                    const dir = DIRECTIONS.DOWN;
+                    const newX = currentPos.x + dir.dx;
+                    const newY = currentPos.y + dir.dy;
                     if (isValidPosition(newX, newY)) {
-                        currentPos = { x: newX, y: newY }
-                        setPosition({ ...currentPos })
-                        history.push({ ...currentPos, rotation: currentRot })
+                        currentPos = { x: newX, y: newY };
+                        setPosition({ ...currentPos });
+                        history.push({ ...currentPos, rotation: currentRot });
                         if (checkWin(newX, newY)) {
-                            setIsComplete(true)
-                            setIsRunning(false)
-                            setMoveHistory(history)
-                            return true
+                            setIsComplete(true);
+                            setIsRunning(false);
+                            setMoveHistory(history);
+                            return true;
                         }
                     }
-                    break
+                    break;
                 }
-                case 'turn_left': {
-                    currentRot -= 90
-                    setRotation(currentRot)
-                    history.push({ ...currentPos, rotation: currentRot, action: 'turn' })
-                    break
+                case 'move_left': {
+                    currentRot = 270;
+                    setRotation(currentRot);
+                    const dir = DIRECTIONS.LEFT;
+                    const newX = currentPos.x + dir.dx;
+                    const newY = currentPos.y + dir.dy;
+                    if (isValidPosition(newX, newY)) {
+                        currentPos = { x: newX, y: newY };
+                        setPosition({ ...currentPos });
+                        history.push({ ...currentPos, rotation: currentRot });
+                        if (checkWin(newX, newY)) {
+                            setIsComplete(true);
+                            setIsRunning(false);
+                            setMoveHistory(history);
+                            return true;
+                        }
+                    }
+                    break;
                 }
-                case 'turn_right': {
-                    currentRot += 90
-                    setRotation(currentRot)
-                    history.push({ ...currentPos, rotation: currentRot, action: 'turn' })
-                    break
+                case 'move_right': {
+                    currentRot = 90;
+                    setRotation(currentRot);
+                    const dir = DIRECTIONS.RIGHT;
+                    const newX = currentPos.x + dir.dx;
+                    const newY = currentPos.y + dir.dy;
+                    if (isValidPosition(newX, newY)) {
+                        currentPos = { x: newX, y: newY };
+                        setPosition({ ...currentPos });
+                        history.push({ ...currentPos, rotation: currentRot });
+                        if (checkWin(newX, newY)) {
+                            setIsComplete(true);
+                            setIsRunning(false);
+                            setMoveHistory(history);
+                            return true;
+                        }
+                    }
+                    break;
                 }
                 case 'wait': {
                     history.push({ ...currentPos, rotation: currentRot, action: 'wait' })
                     break
                 }
                 case 'jump': {
+                    const currentDir = getDirectionFromRotation(currentRot);
                     const dir = DIRECTIONS[currentDir]
                     const jumpX = currentPos.x + dir.dx * 2
                     const jumpY = currentPos.y + dir.dy * 2

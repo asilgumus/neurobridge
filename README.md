@@ -1,6 +1,5 @@
 # neurobridge
 
-![](https://i.imgur.com/4wXon3g.jpeg)
 
 neurobridge is a social responsibility initiative by frc team 6429 - 4th dimension. this project is dedicated to helping children facing neurocognitive challenges explore the world of algorithms and coding logic in a way that feels natural and accessible.
 

@@ -1,183 +1,27 @@
-import { useState, useEffect } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
-import { levels, getCommandById, getLevelById } from '../data/levels'
+import { useEffect } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { AnimatePresence, motion } from 'framer-motion'
+import { getCommandById, getLevelById, levels } from '../data/levels'
 import useGameLogic from '../hooks/useGameLogic'
+import robotImage from '../assets/neurobridge-robot.png'
 import './Game.css'
 
 function Game() {
     const { level: levelParam } = useParams()
     const navigate = useNavigate()
-    const currentLevelId = parseInt(levelParam) || 1
+    const currentLevelId = Number.parseInt(levelParam, 10) || 1
     const level = getLevelById(currentLevelId) || levels[0]
+    const { position, program, isRunning, isComplete, currentStepId, addCommand, removeCommand, clearProgram, runProgram, resetGame, resetPosition } = useGameLogic(level)
+    const availableCommands = level.commands.map((id) => ({ ...getCommandById(id), commandId: id }))
 
-    const {
-        position,
-        rotation,
-        program,
-        isRunning,
-        isComplete,
-        currentStepId,
-        addCommand,
-        removeCommand,
-        clearProgram,
-        runProgram,
-        resetGame,
-        resetPosition
-    } = useGameLogic(level)
-
-    const [showSuccess, setShowSuccess] = useState(false)
-    const [draggedCommand, setDraggedCommand] = useState(null)
-    const [showLoopModal, setShowLoopModal] = useState(false)
-    const [pendingLoopCommand, setPendingLoopCommand] = useState(null)
-    const [pendingTargetId, setPendingTargetId] = useState(null)
-
-    // Reset when level changes
     useEffect(() => {
         resetGame()
-        setShowSuccess(false)
     }, [currentLevelId, resetGame])
 
-    // Show success modal when complete
-    useEffect(() => {
-        if (isComplete) {
-            setTimeout(() => setShowSuccess(true), 500)
-        }
-    }, [isComplete])
-
-    // Available commands for current level
-    const availableCommands = level.commands.map(cmdId => ({
-        ...getCommandById(cmdId),
-        commandId: cmdId
-    }))
-
-    // Handle drag start
-    const handleDragStart = (e, command) => {
-        setDraggedCommand(command)
-        e.dataTransfer.effectAllowed = 'copy'
+    const nextLevel = () => {
+        if (currentLevelId < levels.length) navigate(`/game/${currentLevelId + 1}`)
     }
 
-    // Recursive Program Block Component
-    const ProgramBlock = ({ cmd, index, parentId = null }) => {
-        const isLoop = cmd.commandId === 'loop' || cmd.id === 'loop'
-
-        return (
-            <motion.div
-                layout
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className={`program-block ${currentStepId === cmd.id ? 'executing' : ''} ${isLoop ? 'loop-block' : ''}`}
-                style={{ backgroundColor: cmd.color }}
-            >
-                <div className="block-content">
-                    <span className="program-index">{index + 1}</span>
-                    <span className="program-icon">{cmd.icon}</span>
-                    {isLoop && cmd.repeatCount && (
-                        <span className="repeat-count">×{cmd.repeatCount}</span>
-                    )}
-                    <button
-                        className="program-remove"
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            removeCommand(cmd.id)
-                        }}
-                        disabled={isRunning}
-                    >
-                        ×
-                    </button>
-                </div>
-
-                {isLoop && (
-                    <div
-                        className="loop-children-zone"
-                        onDrop={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            if (draggedCommand && !isRunning) {
-                                // Check if it's a loop command being dropped nested
-                                if (draggedCommand.hasCount || draggedCommand.id === 'loop' || draggedCommand.commandId === 'loop') {
-                                    setPendingLoopCommand(draggedCommand)
-                                    setPendingTargetId(cmd.id) // Target is this loop
-                                    setShowLoopModal(true)
-                                } else {
-                                    addCommand(draggedCommand, cmd.id) // Add to this loop's ID
-                                }
-                            }
-                            setDraggedCommand(null)
-                        }}
-                        onDragOver={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                        }}
-                    >
-                        <AnimatePresence>
-                            {cmd.children?.map((child, i) => (
-                                <ProgramBlock
-                                    key={child.id}
-                                    cmd={child}
-                                    index={i}
-                                    parentId={cmd.id}
-                                />
-                            ))}
-                        </AnimatePresence>
-                        {(!cmd.children || cmd.children.length === 0) && (
-                            <div className="loop-placeholder">Komutları buraya sürükle</div>
-                        )}
-                    </div>
-                )}
-            </motion.div>
-        )
-    }
-
-    // Handle drop on root program area
-    const handleDrop = (e) => {
-        e.preventDefault()
-        if (draggedCommand && !isRunning) {
-            // Loop commands trigger modal first (if at root level or standard drag)
-            if (draggedCommand.hasCount || draggedCommand.id === 'loop' || draggedCommand.commandId === 'loop') {
-                setPendingLoopCommand(draggedCommand)
-                setPendingTargetId(null) // Target is root
-                setShowLoopModal(true)
-            } else {
-                addCommand(draggedCommand)
-            }
-        }
-        setDraggedCommand(null)
-    }
-
-    // Handle loop count selection
-    const handleLoopCountSelect = (count) => {
-        if (pendingLoopCommand) {
-            addCommand({ ...pendingLoopCommand, repeatCount: count }, pendingTargetId)
-        }
-        setShowLoopModal(false)
-        setPendingLoopCommand(null)
-        setPendingTargetId(null)
-    }
-
-    // Handle drag over
-    const handleDragOver = (e) => {
-        e.preventDefault()
-        e.dataTransfer.dropEffect = 'copy'
-    }
-
-    // Next level
-    const goToNextLevel = () => {
-        const nextLevel = currentLevelId + 1
-        if (nextLevel <= levels.length) {
-            navigate(`/game/${nextLevel}`)
-        }
-        setShowSuccess(false)
-    }
-
-    // Retry level
-    const retryLevel = () => {
-        resetGame()
-        setShowSuccess(false)
-    }
-
-    // Generate grid cells
     const renderGrid = () => {
         const cells = []
         for (let y = 0; y < level.gridSize; y++) {
@@ -185,30 +29,10 @@ function Game() {
                 const isStart = level.start.x === x && level.start.y === y
                 const isTarget = level.target.x === x && level.target.y === y
                 const isRobot = position.x === x && position.y === y
-                const isObstacle = level.obstacles.some(obs => obs.x === x && obs.y === y)
-
                 cells.push(
-                    <div
-                        key={`${x}-${y}`}
-                        className={`grid-cell ${isStart ? 'start' : ''} ${isTarget ? 'target' : ''} ${isObstacle ? 'obstacle' : ''}`}
-                    >
-                        {isRobot && (
-                            <motion.div
-                                layoutId="robot"
-                                className="robot"
-                                initial={false}
-                                style={{ transformOrigin: 'center center' }}
-                                animate={{
-                                    rotate: rotation,
-                                    scale: isRunning ? [1, 1.1, 1] : 1
-                                }}
-                                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                            >
-                                🤖
-                            </motion.div>
-                        )}
-                        {isTarget && !isRobot && <span className="target-icon">🎯</span>}
-                        {isObstacle && <span className="obstacle-icon">🧱</span>}
+                    <div key={`${x}-${y}`} className={`grid-cell ${isStart ? 'start' : ''} ${isTarget ? 'target' : ''}`}>
+                        {isRobot && <motion.img layoutId="robot" className="robot" src={robotImage} alt="NeuroBridge robotu" initial={false} animate={{ scale: isRunning ? [1, 1.08, 1] : 1 }} />}
+                        {isTarget && !isRobot && <span className="target-icon">★</span>}
                     </div>
                 )
             }
@@ -217,267 +41,75 @@ function Game() {
     }
 
     return (
-        <div className="game-page">
+        <main className="game-page">
             <div className="game-container container">
-                {/* Level Header */}
-                <div className="game-header glass">
-                    <div className="level-info">
-                        <span className="level-badge">Seviye {currentLevelId}</span>
-                        <h2>{level.name}</h2>
+                <header className="game-header">
+                    <div>
+                        <p className="eyebrow">SEVİYE {currentLevelId} / {levels.length}</p>
+                        <h1>{level.name}</h1>
                     </div>
-                    <div className="level-nav">
-                        <button
-                            className="btn btn-secondary btn-icon"
-                            disabled={currentLevelId <= 1}
-                            onClick={() => navigate(`/game/${currentLevelId - 1}`)}
-                        >
-                            ◀
-                        </button>
-                        <span className="level-progress">{currentLevelId} / {levels.length}</span>
-                        <button
-                            className="btn btn-secondary btn-icon"
-                            disabled={currentLevelId >= levels.length}
-                            onClick={() => navigate(`/game/${currentLevelId + 1}`)}
-                        >
-                            ▶
-                        </button>
+                    <div className="level-nav" aria-label="Seviye gezintisi">
+                        <button className="btn btn-secondary btn-icon" aria-label="Önceki seviye" disabled={currentLevelId === 1} onClick={() => navigate(`/game/${currentLevelId - 1}`)}>←</button>
+                        <button className="btn btn-secondary btn-icon" aria-label="Sonraki seviye" disabled={currentLevelId === levels.length} onClick={() => navigate(`/game/${currentLevelId + 1}`)}>→</button>
                     </div>
-                </div>
+                </header>
 
                 <div className="game-layout">
-                    {/* Command Palette */}
-                    <div className="command-palette glass">
-                        <h3>Komutlar</h3>
-                        <p className="palette-hint">Blokları sürükleyip program alanına bırak</p>
+                    <section className="game-board-wrapper" aria-label="Oyun tahtası">
+                        <div className="game-board" style={{ gridTemplateColumns: `repeat(${level.gridSize}, 1fr)` }}>{renderGrid()}</div>
+                        <p className="hint-box">İpucu: {level.hint}</p>
+                    </section>
+
+                    <section className="command-palette" aria-label="Yön komutları">
+                        <div className="section-label">
+                            <p className="eyebrow">1. YÖN SEÇ</p>
+                            <h2>Hareketler</h2>
+                        </div>
                         <div className="command-list">
-                            {availableCommands.map((cmd, i) => (
-                                <motion.div
-                                    key={cmd.id}
-                                    className="command-block"
-                                    style={{ backgroundColor: cmd.color }}
-                                    draggable={!isRunning}
-                                    onDragStart={(e) => handleDragStart(e, cmd)}
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: i * 0.1 }}
-                                >
-                                    <span className="command-icon">{cmd.icon}</span>
-                                    <span className="command-name">{cmd.name}</span>
-                                </motion.div>
+                            {availableCommands.map((command) => (
+                                <button key={command.id} className="command-block" style={{ '--command-color': command.color }} disabled={isRunning} onClick={() => addCommand(command)}>
+                                    <span aria-hidden="true">{command.icon}</span>{command.name}
+                                </button>
                             ))}
                         </div>
-                    </div>
+                    </section>
 
-                    {/* Game Board */}
-                    <div className="game-board-wrapper">
-                        <div
-                            className="game-board glass"
-                            style={{
-                                '--grid-size': level.gridSize,
-                                gridTemplateColumns: `repeat(${level.gridSize}, 1fr)`
-                            }}
-                        >
-                            {renderGrid()}
-                        </div>
-
-                        {/* Hint */}
-                        <div className="hint-box">
-                            <span className="hint-icon">💡</span>
-                            <span className="hint-text">{level.hint}</span>
-                        </div>
-                    </div>
-
-                    {/* Program Area */}
-                    <div className="program-area glass">
+                    <section className="program-area" aria-label="Seçilen hareketler">
                         <div className="program-header">
-                            <h3>Program</h3>
-                            <button
-                                className="btn-clear"
-                                onClick={clearProgram}
-                                disabled={isRunning || program.length === 0}
-                            >
-                                Temizle
-                            </button>
+                            <div>
+                                <p className="eyebrow">2. SIRALA</p>
+                                <h2>Senin yolun</h2>
+                            </div>
+                            <button className="btn-clear" onClick={clearProgram} disabled={isRunning || !program.length}>Temizle</button>
                         </div>
-
-                        <div
-                            className={`program-drop-zone ${draggedCommand ? 'active' : ''}`}
-                            onDrop={handleDrop}
-                            onDragOver={handleDragOver}
-                        >
-                            {program.length === 0 ? (
-                                <p className="drop-hint">Komutları buraya sürükle</p>
-                            ) : (
-                                <div className="program-list">
-                                    <AnimatePresence>
-                                        {program.map((cmd, index) => (
-                                            <ProgramBlock key={cmd.id} cmd={cmd} index={index} />
-                                        ))}
-                                    </AnimatePresence>
+                        <div className="program-drop-zone">
+                            {program.length === 0 ? <p className="drop-hint">Soldaki oka dokun.</p> : <div className="program-list">{program.map((command, index) => (
+                                <div key={command.id} className={`program-block ${currentStepId === command.id ? 'executing' : ''}`} style={{ '--command-color': command.color }}>
+                                    <span className="program-index">{index + 1}</span><span>{command.icon}</span><span>{command.name}</span>
+                                    <button aria-label={`${command.name} komutunu sil`} disabled={isRunning} onClick={() => removeCommand(command.id)}>×</button>
                                 </div>
-                            )}
+                            ))}</div>}
                         </div>
-
                         <div className="program-controls">
-                            <button
-                                className="btn btn-primary control-btn"
-                                onClick={runProgram}
-                                disabled={isRunning || program.length === 0}
-                            >
-                                <span>▶</span>
-                                <span>Çalıştır</span>
-                            </button>
-                            <button
-                                className="btn btn-secondary control-btn"
-                                onClick={resetPosition}
-                                disabled={isRunning}
-                            >
-                                <span>↺</span>
-                                <span>Sıfırla</span>
-                            </button>
+                            <button className="btn btn-primary control-btn" disabled={isRunning || !program.length} onClick={runProgram}>Yolu çalıştır</button>
+                            <button className="btn btn-secondary control-btn" disabled={isRunning} onClick={resetPosition}>Başa dön</button>
                         </div>
-                    </div>
+                    </section>
                 </div>
             </div>
 
-            {/* Success Modal */}
             <AnimatePresence>
-                {showSuccess && (
-                    <motion.div
-                        className="success-overlay"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                    >
-                        <motion.div
-                            className="success-modal glass"
-                            initial={{ scale: 0.8, y: 50 }}
-                            animate={{ scale: 1, y: 0 }}
-                            exit={{ scale: 0.8, y: 50 }}
-                        >
-                            <div className="success-confetti">
-                                {[...Array(20)].map((_, i) => (
-                                    <motion.span
-                                        key={i}
-                                        className="confetti-piece"
-                                        style={{
-                                            left: `${Math.random() * 100}%`,
-                                            backgroundColor: ['#10B981', '#3B82F6', '#F59E0B', '#8B5CF6', '#F97316'][Math.floor(Math.random() * 5)]
-                                        }}
-                                        initial={{ y: 0, opacity: 1, rotate: 0 }}
-                                        animate={{
-                                            y: -300,
-                                            opacity: 0,
-                                            rotate: Math.random() * 360
-                                        }}
-                                        transition={{
-                                            duration: 2,
-                                            delay: Math.random() * 0.5,
-                                            repeat: Infinity
-                                        }}
-                                    />
-                                ))}
-                            </div>
-
-                            <div className="success-icon">🎉</div>
-                            <h2>Tebrikler!</h2>
-                            <p>Seviye {currentLevelId} tamamlandı!</p>
-
-                            <div className="success-stats">
-                                <div className="stat">
-                                    <span className="stat-value">{program.length}</span>
-                                    <span className="stat-label">Komut</span>
-                                </div>
-                                <div className="stat">
-                                    <span className="stat-value">{level.optimalMoves}</span>
-                                    <span className="stat-label">Optimal</span>
-                                </div>
-                                <div className="stat stars">
-                                    {[1, 2, 3].map((star) => (
-                                        <span
-                                            key={star}
-                                            className={`star ${program.length <= level.optimalMoves + star - 1 ? 'filled' : ''}`}
-                                        >
-                                            ⭐
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="success-actions">
-                                <button className="btn btn-secondary" onClick={retryLevel}>
-                                    Tekrar Dene
-                                </button>
-                                {currentLevelId < levels.length ? (
-                                    <button className="btn btn-primary" onClick={goToNextLevel}>
-                                        Sonraki Seviye
-                                    </button>
-                                ) : (
-                                    <Link to="/" className="btn btn-primary">
-                                        Ana Sayfa
-                                    </Link>
-                                )}
-                            </div>
-                        </motion.div>
+                {isComplete && <motion.div className="success-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <motion.div className="success-modal" initial={{ scale: 0.96, y: 12 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.96, y: 12 }}>
+                        <p className="eyebrow">TAMAMLANDI</p><div className="success-icon">✓</div><h2>Harika iş!</h2><p>Hedefe ulaştın.</p>
+                        <div className="success-actions">
+                            <button className="btn btn-secondary" onClick={resetGame}>Tekrar oyna</button>
+                            {currentLevelId < levels.length ? <button className="btn btn-primary" onClick={nextLevel}>Sonraki seviye</button> : <Link className="btn btn-primary" to="/">Ana sayfa</Link>}
+                        </div>
                     </motion.div>
-                )}
+                </motion.div>}
             </AnimatePresence>
-
-            {/* Loop Count Selection Modal */}
-            <AnimatePresence>
-                {showLoopModal && (
-                    <motion.div
-                        className="loop-modal-overlay"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onClick={() => {
-                            setShowLoopModal(false)
-                            setPendingLoopCommand(null)
-                        }}
-                    >
-                        <motion.div
-                            className="loop-modal glass"
-                            initial={{ scale: 0.8, y: 30 }}
-                            animate={{ scale: 1, y: 0 }}
-                            exit={{ scale: 0.8, y: 30 }}
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <div className="loop-modal-header">
-                                <span className="loop-modal-icon">🔄</span>
-                                <h3>Kaç Kez Tekrar?</h3>
-                            </div>
-                            <p className="loop-modal-hint">Kaç kez tekrarlamak istiyorsun?</p>
-                            <div className="loop-count-options">
-                                {[2, 3, 4, 5].map((count) => (
-                                    <motion.button
-                                        key={count}
-                                        className="loop-count-btn"
-                                        onClick={() => handleLoopCountSelect(count)}
-                                        whileHover={{ scale: 1.1 }}
-                                        whileTap={{ scale: 0.95 }}
-                                    >
-                                        <span className="count-number">{count}</span>
-                                        <span className="count-label">kez</span>
-                                    </motion.button>
-                                ))}
-                            </div>
-                            <button
-                                className="loop-cancel-btn"
-                                onClick={() => {
-                                    setShowLoopModal(false)
-                                    setPendingLoopCommand(null)
-                                }}
-                            >
-                                İptal
-                            </button>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </div>
+        </main>
     )
 }
 

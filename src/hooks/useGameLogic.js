@@ -3,331 +3,72 @@ import { DIRECTIONS } from '../data/levels'
 
 export function useGameLogic(level) {
     const [position, setPosition] = useState(level?.start || { x: 0, y: 0 })
-    // Store rotation in degrees (0 = UP, 90 = RIGHT, 180 = DOWN, 270 = LEFT)
-    const [rotation, setRotation] = useState(() => {
-        const dir = level?.direction || 'UP'
-        const map = { UP: 0, RIGHT: 90, DOWN: 180, LEFT: 270 }
-        return map[dir] || 0
-    })
-
-    // Derived direction string for logic checks
-    const getDirectionFromRotation = (rot) => {
-        let normalized = rot % 360
-        if (normalized < 0) normalized += 360
-
-        if (normalized === 0) return 'UP'
-        if (normalized === 90) return 'RIGHT'
-        if (normalized === 180) return 'DOWN'
-        if (normalized === 270) return 'LEFT'
-        return 'UP' // Default
-    }
-
     const [program, setProgram] = useState([])
     const [isRunning, setIsRunning] = useState(false)
     const [isComplete, setIsComplete] = useState(false)
-    const [currentStepId, setCurrentStepId] = useState(null) // Using ID for nested tracking
-    const [moveHistory, setMoveHistory] = useState([])
+    const [currentStepId, setCurrentStepId] = useState(null)
 
-    // Reset game state
-    const resetGame = useCallback(() => {
-        if (level) {
-            setPosition(level.start)
-            const map = { UP: 0, RIGHT: 90, DOWN: 180, LEFT: 270 }
-            setRotation(map[level.direction] || 0)
-        }
-        setProgram([])
-        setIsRunning(false)
-        setIsComplete(false)
-        setCurrentStepId(null)
-        setMoveHistory([])
-    }, [level])
-
-    // Reset position only (keep program)
     const resetPosition = useCallback(() => {
-        if (level) {
-            setPosition(level.start)
-            const map = { UP: 0, RIGHT: 90, DOWN: 180, LEFT: 270 }
-            setRotation(map[level.direction] || 0)
-        }
+        if (level) setPosition(level.start)
         setIsRunning(false)
         setIsComplete(false)
         setCurrentStepId(null)
-        setMoveHistory([])
     }, [level])
 
-    // Helper to find a node by ID and its parent array
-    const findNodeAndParent = (items, id, parent = null) => {
-        for (let i = 0; i < items.length; i++) {
-            if (items[i].id === id) {
-                return { node: items[i], index: i, parentArray: items, parentNode: parent }
-            }
-            if (items[i].children) {
-                const result = findNodeAndParent(items[i].children, id, items[i])
-                if (result) return result
-            }
-        }
-        return null
-    }
-
-    // Add command to program (root or nested)
-    const addCommand = useCallback((command, parentId = null) => {
-        const newCmd = {
-            ...command,
-            id: Date.now() + Math.random(),
-            children: (command.id === 'loop' || command.commandId === 'loop') ? [] : undefined
-        }
-
-        setProgram(prev => {
-            if (!parentId) {
-                return [...prev, newCmd]
-            }
-
-            // Deep clone to avoid mutation
-            const clone = JSON.parse(JSON.stringify(prev))
-
-            // Find parent
-            const findAndPush = (items) => {
-                for (let item of items) {
-                    if (item.id === parentId) {
-                        if (!item.children) item.children = []
-                        item.children.push(newCmd)
-                        return true
-                    }
-                    if (item.children) {
-                        if (findAndPush(item.children)) return true
-                    }
-                }
-                return false
-            }
-
-            findAndPush(clone)
-            return clone
-        })
-    }, [])
-
-    // Remove command from program
-    const removeCommand = useCallback((id) => {
-        setProgram(prev => {
-            const clone = JSON.parse(JSON.stringify(prev))
-
-            const removeRecursive = (items) => {
-                const index = items.findIndex(item => item.id === id)
-                if (index !== -1) {
-                    items.splice(index, 1)
-                    return true
-                }
-                for (let item of items) {
-                    if (item.children) {
-                        if (removeRecursive(item.children)) return true
-                    }
-                }
-                return false
-            }
-
-            removeRecursive(clone)
-            return clone
-        })
-    }, [])
-
-    // Clear all commands
-    const clearProgram = useCallback(() => {
+    const resetGame = useCallback(() => {
+        resetPosition()
         setProgram([])
+    }, [resetPosition])
+
+    const addCommand = useCallback((command) => {
+        setProgram((current) => [...current, { ...command, id: `${Date.now()}-${Math.random()}` }])
     }, [])
 
-    // Check if position is valid
-    const isValidPosition = useCallback((x, y) => {
-        if (!level) return false
-        if (x < 0 || x >= level.gridSize || y < 0 || y >= level.gridSize) return false
-        const isObstacle = level.obstacles.some(obs => obs.x === x && obs.y === y)
-        return !isObstacle
-    }, [level])
+    const removeCommand = useCallback((id) => {
+        setProgram((current) => current.filter((command) => command.id !== id))
+    }, [])
 
-    // Check if target reached
-    const checkWin = useCallback((x, y) => {
-        if (!level) return false
-        return x === level.target.x && y === level.target.y
-    }, [level])
+    const clearProgram = useCallback(() => setProgram([]), [])
 
-    // Expand program recursively for execution
-    const expandProgram = (cmds) => {
-        let expanded = []
-        for (let cmd of cmds) {
-            if ((cmd.id === 'loop' || cmd.commandId === 'loop') && cmd.children && cmd.children.length > 0) {
-                const repeatCount = cmd.repeatCount || 3
-                // Loop itself executes (highlight loop block)
-                expanded.push({ ...cmd, isLoopStart: true })
+    const isValidPosition = useCallback((x, y) => (
+        level && x >= 0 && x < level.gridSize && y >= 0 && y < level.gridSize
+    ), [level])
 
-                // Then children execute N times
-                for (let i = 0; i < repeatCount; i++) {
-                    const childrenExpanded = expandProgram(cmd.children)
-                    expanded.push(...childrenExpanded)
-                }
-            } else {
-                expanded.push(cmd)
-            }
-        }
-        return expanded
-    }
-
-    // Execute program step by step
     const runProgram = useCallback(async () => {
-        if (program.length === 0 || !level) return
+        if (!level || program.length === 0) return false
 
         setIsRunning(true)
-        resetPosition()
+        setIsComplete(false)
+        let currentPosition = { ...level.start }
+        setPosition(currentPosition)
 
-        let currentPos = { ...level.start }
-        const map = { UP: 0, RIGHT: 90, DOWN: 180, LEFT: 270 }
-        let currentRot = map[level.direction] || 0;
+        for (const command of program) {
+            setCurrentStepId(command.id)
+            await new Promise((resolve) => setTimeout(resolve, 350))
 
-        const history = [{ ...currentPos, rotation: currentRot }]
+            const direction = DIRECTIONS[command.commandId?.replace('move_', '').toUpperCase()]
+            if (!direction) continue
 
-        // Flatten the nested structure for execution
-        const expandedProgram = expandProgram(program)
-
-        // Execute
-        for (let step = 0; step < expandedProgram.length; step++) {
-            const cmd = expandedProgram[step]
-            const commandId = cmd.commandId || cmd.id
-
-            // If it's a loop start marker, just highlight it briefly
-            if (cmd.isLoopStart) {
-                setCurrentStepId(cmd.id)
-                await new Promise(resolve => setTimeout(resolve, 500))
-                continue // Don't verify position logic for the loop container itself
-            }
-
-            setCurrentStepId(cmd.id)
-            await new Promise(resolve => setTimeout(resolve, 500))
-
-            const currentDir = getDirectionFromRotation(currentRot);
-
-            switch (commandId) {
-                case 'move_up': {
-                    currentRot = 0;
-                    setRotation(currentRot);
-                    const dir = DIRECTIONS.UP;
-                    const newX = currentPos.x + dir.dx;
-                    const newY = currentPos.y + dir.dy;
-                    if (isValidPosition(newX, newY)) {
-                        currentPos = { x: newX, y: newY };
-                        setPosition({ ...currentPos });
-                        history.push({ ...currentPos, rotation: currentRot });
-                        if (checkWin(newX, newY)) {
-                            setIsComplete(true);
-                            setIsRunning(false);
-                            setMoveHistory(history);
-                            return true;
-                        }
-                    }
-                    break;
-                }
-                case 'move_down': {
-                    currentRot = 180;
-                    setRotation(currentRot);
-                    const dir = DIRECTIONS.DOWN;
-                    const newX = currentPos.x + dir.dx;
-                    const newY = currentPos.y + dir.dy;
-                    if (isValidPosition(newX, newY)) {
-                        currentPos = { x: newX, y: newY };
-                        setPosition({ ...currentPos });
-                        history.push({ ...currentPos, rotation: currentRot });
-                        if (checkWin(newX, newY)) {
-                            setIsComplete(true);
-                            setIsRunning(false);
-                            setMoveHistory(history);
-                            return true;
-                        }
-                    }
-                    break;
-                }
-                case 'move_left': {
-                    currentRot = 270;
-                    setRotation(currentRot);
-                    const dir = DIRECTIONS.LEFT;
-                    const newX = currentPos.x + dir.dx;
-                    const newY = currentPos.y + dir.dy;
-                    if (isValidPosition(newX, newY)) {
-                        currentPos = { x: newX, y: newY };
-                        setPosition({ ...currentPos });
-                        history.push({ ...currentPos, rotation: currentRot });
-                        if (checkWin(newX, newY)) {
-                            setIsComplete(true);
-                            setIsRunning(false);
-                            setMoveHistory(history);
-                            return true;
-                        }
-                    }
-                    break;
-                }
-                case 'move_right': {
-                    currentRot = 90;
-                    setRotation(currentRot);
-                    const dir = DIRECTIONS.RIGHT;
-                    const newX = currentPos.x + dir.dx;
-                    const newY = currentPos.y + dir.dy;
-                    if (isValidPosition(newX, newY)) {
-                        currentPos = { x: newX, y: newY };
-                        setPosition({ ...currentPos });
-                        history.push({ ...currentPos, rotation: currentRot });
-                        if (checkWin(newX, newY)) {
-                            setIsComplete(true);
-                            setIsRunning(false);
-                            setMoveHistory(history);
-                            return true;
-                        }
-                    }
-                    break;
-                }
-                case 'wait': {
-                    history.push({ ...currentPos, rotation: currentRot, action: 'wait' })
-                    break
-                }
-                case 'jump': {
-                    const currentDir = getDirectionFromRotation(currentRot);
-                    const dir = DIRECTIONS[currentDir]
-                    const jumpX = currentPos.x + dir.dx * 2
-                    const jumpY = currentPos.y + dir.dy * 2
-                    if (jumpX >= 0 && jumpX < level.gridSize && jumpY >= 0 && jumpY < level.gridSize) {
-                        const landingObstacle = level.obstacles.some(obs => obs.x === jumpX && obs.y === jumpY)
-                        if (!landingObstacle) {
-                            currentPos = { x: jumpX, y: jumpY }
-                            setPosition({ ...currentPos })
-                            history.push({ ...currentPos, rotation: currentRot, action: 'jump' })
-                            if (checkWin(jumpX, jumpY)) {
-                                setIsComplete(true)
-                                setIsRunning(false)
-                                setMoveHistory(history)
-                                return true
-                            }
-                        }
-                    }
-                    break
+            const nextX = currentPosition.x + direction.dx
+            const nextY = currentPosition.y + direction.dy
+            if (isValidPosition(nextX, nextY)) {
+                currentPosition = { x: nextX, y: nextY }
+                setPosition(currentPosition)
+                if (nextX === level.target.x && nextY === level.target.y) {
+                    setIsComplete(true)
+                    setIsRunning(false)
+                    setCurrentStepId(null)
+                    return true
                 }
             }
         }
 
         setIsRunning(false)
         setCurrentStepId(null)
-        setMoveHistory(history)
-        return checkWin(currentPos.x, currentPos.y)
-    }, [program, level, resetPosition, isValidPosition, checkWin])
+        return false
+    }, [isValidPosition, level, program])
 
-    return {
-        position,
-        rotation,
-        program,
-        isRunning,
-        isComplete,
-        currentStepId,
-        moveHistory,
-        addCommand,
-        removeCommand,
-        clearProgram,
-        runProgram,
-        resetGame,
-        resetPosition
-    }
+    return { position, program, isRunning, isComplete, currentStepId, addCommand, removeCommand, clearProgram, runProgram, resetGame, resetPosition }
 }
 
 export default useGameLogic

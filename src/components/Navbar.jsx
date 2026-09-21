@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import Logo from './Logo'
 import './Navbar.css'
 
 function Navbar() {
@@ -15,10 +16,7 @@ function Navbar() {
         >
             <div className="navbar-container container">
                 <Link to="/" className="navbar-logo">
-                    <span className="logo-icon">🧠</span>
-                    <span className="logo-text">
-                        Neuro<span className="gradient-text">Bridge</span>
-                    </span>
+                    <Logo />
                 </Link>
 
                 <div className="navbar-links">
